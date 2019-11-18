@@ -1,5 +1,6 @@
 # django-ftp-jumper
 基于django的ftp客户端，所有前端页面操作，发送到服务端，然后转换成ftp api操作远程ftp服务器。
+ftp类库使用的是ftplibs  
 
 ### 使用方法：
 拷贝ftp_client到你的django项目中
