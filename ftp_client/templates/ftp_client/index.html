@@ -1,0 +1,244 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FTP client</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'ftp_client/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'ftp_client/css/style.css' %}">
+    <script type="text/javascript" src="{% static 'ftp_client/js/jquery-1.11.3.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'ftp_client/js/bootstrap.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'ftp_client/js/main.js' %}"></script>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="page-header">
+        <h1>FTP client</h1>
+    </div>
+    <div class="panel panel-primary">
+        <div class="panel-heading">Connection settings</div>
+        <div class="panel-body">
+            <form class="form-inline" method="post" id="connection-form" action="{% url 'ftp_client:connect' %}">
+                {% csrf_token %}
+                {% for field in connection_form %}
+                    {% if field.is_hidden %}
+                        {{ field }}
+                    {% else %}
+                        <div class="form-group">
+                            {{ field.errors }}
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-default">Connect</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6 dirs-column local" data-type="local">
+            <div class="alerts">
+                <div class="alert alert-danger" role="alert">
+                    <button class="close" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                    <strong></strong>
+                </div>
+            </div>
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    Local directory: <span class="directory">{{ local_dir_path }}</span>
+                    <div class="tasks pull-right">
+                        <a class="mkdir" href="#" title="Create folder">
+                            <span class="glyphicon glyphicon-folder-open"></span>
+                        </a>
+                        <a class="rename" href="#" title="rename">
+                            <span class="glyphicon glyphicon-pencil"></span>
+                        </a>
+                        <a class="chmod" href="#" title="change permissions">
+                            <span class="glyphicon glyphicon-cog"></span>
+                        </a>
+                        <a class="upload" href="#" title="Upload to server">
+                            <span class="glyphicon glyphicon-upload"></span>
+                        </a>
+                        <a class="remove" href="#" title="Remove">
+                            <span class="glyphicon glyphicon-trash"></span>
+                        </a>
+                        <div class="tasks-disable"></div>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-hover">
+                        <tr>
+                            <th>File name</th>
+                            <th>Size</th>
+                            <th>Type</th>
+                            <th>Permission</th>
+                        </tr>
+                        {% for item in local_dir %}
+                            <tr data-type="{{ item.type }}" data-full-path="{{ item.full_path }}">
+                                <td>
+                                    {% if item.type == 'catalog' %}
+                                        <span class="glyphicon glyphicon-folder-close"></span>
+                                    {% else %}
+                                        <span class="glyphicon glyphicon-file"></span>
+                                    {% endif %}&nbsp;&nbsp;{{ item.name }}
+                                </td>
+                                <td>{{ item.size }}</td>
+                                <td>{{ item.info }}</td>
+                                <td>{{ item.perms }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    <div class="progress-wrapper">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped active" role="progressbar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 dirs-column remote" data-type="remote">
+            <div class="alerts">
+                <div class="alert alert-danger" role="alert">
+                    <button class="close" aria-label="Close">
+                        <span >&times;</span>
+                    </button>
+                    <strong></strong>
+                </div>
+            </div>
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    Remote directory1: <span class="directory"></span>
+                    <div class="tasks pull-right">
+                        <a class="mkdir" href="#" title="Create folder">
+                            <span class="glyphicon glyphicon-folder-open"></span>
+                        </a>
+                        <a class="rename" href="#" title="rename">
+                            <span class="glyphicon glyphicon-pencil"></span>
+                        </a>
+                        <a class="chmod" href="#" title="change permissions">
+                            <span class="glyphicon glyphicon-cog"></span>
+                        </a>
+                        <a class="upload" href="#" title="Download from server">
+                            <span class="glyphicon glyphicon-download-alt"></span>
+                        </a>
+                        <a class="remove" href="#" title="Remove">
+                            <span class="glyphicon glyphicon-trash"></span>
+                        </a>
+                        <div class="tasks-disable"></div>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-hover">
+                        <tr>
+                            <th>File name</th>
+                            <th>Size_remote</th>
+                            <th>Type</th>
+                            <th>Permission</th>
+                        </tr>
+                    </table>
+                    <div class="progress-wrapper">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped active" role="progressbar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modal-mkdir" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form class="form-inline" id="tasks-mkdir" method="post">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Create folder</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="tasks-mkdir-name">New folder name:</label>
+                        <input type="text" name="tasks-mkdir-name" id="tasks-mkdir-name" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <input type="submit" value="Create folder" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modal-rename" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form class="form-inline" id="tasks-rename" method="post">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Rename</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="tasks-rename-name">New name:</label>
+                        <input type="text" name="tasks-rename-name" id="tasks-rename-name" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <input type="submit" value="Rename" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modal-chmod" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form class="form-inline" id="tasks-chmod" method="post">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Change permission</h4>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <td></td>
+                            <td>Read</td>
+                            <td>Write</td>
+                            <td>Execute</td>
+                        </tr>
+                        <tr>
+                            <td>Owner</td>
+                            <td><input type="checkbox" name="owner" value="4"></td>
+                            <td><input type="checkbox" name="owner" value="2"></td>
+                            <td><input type="checkbox" name="owner" value="1"></td>
+                        </tr>
+                        <tr>
+                            <td>Group</td>
+                            <td><input type="checkbox" name="group" value="4"></td>
+                            <td><input type="checkbox" name="group" value="2"></td>
+                            <td><input type="checkbox" name="group" value="1"></td>
+                        </tr>
+                        <tr>
+                            <td>Other</td>
+                            <td><input type="checkbox" name="other" value="4"></td>
+                            <td><input type="checkbox" name="other" value="2"></td>
+                            <td><input type="checkbox" name="other" value="1"></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <input type="submit" value="Change" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
